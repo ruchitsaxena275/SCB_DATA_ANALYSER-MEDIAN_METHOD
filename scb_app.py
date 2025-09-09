@@ -35,8 +35,10 @@ def login_and_get_page():
         time.sleep(3)  # wait for page load
 
         # Adjust selectors based on actual HTML form
-        driver.find_element(By.NAME, "username").send_keys(username)
-        driver.find_element(By.NAME, "password").send_keys(password, Keys.RETURN)
+        # NEW (correct fields)
+driver.find_element(By.NAME, "email").send_keys(username)
+driver.find_element(By.NAME, "password").send_keys(password)
+, Keys.RETURN)
         time.sleep(5)  # wait for redirect
 
         html = driver.page_source
@@ -74,3 +76,4 @@ if run_monitor:
 
         time.sleep(check_interval)
         st.experimental_rerun()
+
