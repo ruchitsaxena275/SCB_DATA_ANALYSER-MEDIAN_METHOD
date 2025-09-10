@@ -38,7 +38,7 @@ def login_and_get_page():
         # NEW (correct fields)
 driver.find_element(By.NAME, "email").send_keys(username)
 driver.find_element(By.NAME, "password").send_keys(password)
-, Keys.RETURN)
+, Keys.RETURN
         time.sleep(5)  # wait for redirect
 
         html = driver.page_source
@@ -76,4 +76,5 @@ if run_monitor:
 
         time.sleep(check_interval)
         st.experimental_rerun()
+
 
