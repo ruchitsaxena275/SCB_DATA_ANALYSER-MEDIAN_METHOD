@@ -27,7 +27,7 @@ def login_and_get_page():
 
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
-  def fetch_html(login_url, username, password):
+ def fetch_html(login_url, username, password):
     options = webdriver.ChromeOptions()
     options.add_argument("--disable-gpu")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
@@ -42,6 +42,10 @@ def login_and_get_page():
         time.sleep(5)  # wait for redirect
         html = driver.page_source
         return html
+
+    except Exception as e:
+        print("Login failed:", e)
+        return None
 
     except Exception as e:
         print("Login failed:", e)
@@ -83,6 +87,7 @@ if run_monitor:
 
         time.sleep(check_interval)
         st.experimental_rerun()
+
 
 
 
