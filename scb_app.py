@@ -27,22 +27,25 @@ def login_and_get_page():
 
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+   options.add_argument("--disable-gpu")
+driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-    try:
-        driver.get(login_url)
-        time.sleep(3)  # wait for page load
+try:
+    driver.get(login_url)
+    time.sleep(3)  # wait for page load
 
-        # Adjust selectors based on actual HTML form
-        # NEW (correct fields)
-driver.find_element(By.NAME, "email").send_keys(username)
-driver.find_element(By.NAME, "password").send_keys(password)
-, Keys.RETURN
-        time.sleep(5)  # wait for redirect
+    # Adjust selectors based on actual HTML form
+    driver.find_element(By.NAME, "email").send_keys(username)
+    driver.find_element(By.NAME, "password").send_keys(password + Keys.RETURN)
 
-        html = driver.page_source
-        return html
+    time.sleep(5)  # wait for redirect
+    html = driver.page_source
+    return html
+
+except Exception as e:
+    print("Login failed:", e)
+    return None
+
     finally:
         driver.quit()
 
@@ -76,5 +79,6 @@ if run_monitor:
 
         time.sleep(check_interval)
         st.experimental_rerun()
+
 
 
