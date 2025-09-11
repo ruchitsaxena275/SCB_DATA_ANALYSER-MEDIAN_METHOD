@@ -1,57 +1,83 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
+import streamlit as st
+import requests
+from bs4 import BeautifulSoup
 import time
 
-# Setup headless Chrome browser
-chrome_options = Options()
-chrome_options.add_argument("--headless")  # Comment out this line to see the browser
-chrome_options.add_argument("--disable-gpu")
-driver = webdriver.Chrome(options=chrome_options)
+st.set_page_config(page_title="POSOCO Portal Monitor", layout="wide")
+st.title("🔎 POSOCO Portal Webpage Monitor (Login Required)")
 
-def login(driver, login_url, username, password):
-    driver.get(login_url)
-    time.sleep(2)  # Let page load
+# --- Inputs ---
+login_url = st.text_input("Login Page URL", "https://posoco.in/login")
+data_url = st.text_input("Data Page URL", "https://posoco.in/data")
+username = st.text_input("Username")
+password = st.text_input("Password", type="password")
+interval = st.slider("Refresh interval (seconds)", 30, 600, 60)
 
-    # Enter username and password using provided 'name' attributes
-    driver.find_element(By.NAME, "email").send_keys(username)
-    driver.find_element(By.NAME, "password").send_keys(password)
+# --- Session state ---
+if "last_seen" not in st.session_state:
+    st.session_state["last_seen"] = ""
+if "session" not in st.session_state:
+    st.session_state["session"] = requests.Session()
+if "monitoring" not in st.session_state:
+    st.session_state["monitoring"] = False
 
-    # Click SIGN IN button using XPath to match button text
-    driver.find_element(By.XPATH, "//button[text()='SIGN IN']").click()
-    time.sleep(5)  # Wait for login to complete
+def login_and_fetch():
+    session = st.session_state["session"]
 
-def check_for_update(driver, target_url, last_content):
-    driver.get(target_url)
-    time.sleep(5)  # Wait page fully loads
+    # Step 1: GET login page
+    resp = session.get(login_url)
+    if resp.status_code != 200:
+        raise Exception(f"Login page not reachable (HTTP {resp.status_code})")
 
-    # Replace 'target_element_id' with actual element ID or XPath for the monitored content on POSOCO portal.
-    # For example purposes, let's assume an element with id 'updateContent'
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Step 2: Build payload with hidden fields (CSRF etc.)
+    payload = {}
+    for hidden in soup.find_all("input", {"type": "hidden"}):
+        if hidden.get("name"):
+            payload[hidden["name"]] = hidden.get("value", "")
+
+    # Step 3: Add username + password
+    payload["email"] = username
+    payload["password"] = password
+
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": login_url,
+    }
+
+    # Step 4: POST login
+    login_resp = session.post(login_url, data=payload, headers=headers)
+    if login_resp.status_code != 200:
+        raise Exception(f"Login failed (HTTP {login_resp.status_code})")
+
+    # Step 5: Access data page
+    data_resp = session.get(data_url, headers=headers)
+    if data_resp.status_code != 200:
+        raise Exception(f"Data fetch failed (HTTP {data_resp.status_code})")
+
+    return data_resp.text
+
+# --- Start Monitoring ---
+if st.button("Start Monitoring"):
+    st.session_state["monitoring"] = True
+
+if st.session_state["monitoring"]:
     try:
-        element = driver.find_element(By.ID, "updateContent")
-        current_content = element.text
-    except:
-        current_content = ""
+        content = login_and_fetch()
+        last_seen = st.session_state["last_seen"]
 
-    # Check for content change
-    if current_content != last_content:
-        return current_content, True
-    return last_content, False
+        if last_seen and last_seen != content:
+            st.toast("🔔 New update detected on POSOCO portal!", icon="⚡")
+            st.write("✅ Update detected at", time.strftime("%Y-%m-%d %H:%M:%S"))
+        elif not last_seen:
+            st.success("✅ First fetch successful, monitoring started.")
 
-if __name__ == "__main__":
-    login_url = "https://oms.nrldc.in/posoco/home?_logout=true&status=false"      # Replace with actual login URL
-    data_url = "https://oms.nrldc.in/posoco/shutdown?action=otherlist&list=true" # Replace with actual page URL to monitor
-    username = "Junaoutage"                         # Replace with actual username
-    password = "junaoutage123"                      # Replace with actual password
-    last_content = ""
+        st.session_state["last_seen"] = content
 
-    login(driver, login_url, username, password)
+    except Exception as e:
+        st.error(f"❌ Error: {e}")
 
-    while True:
-        last_content, updated = check_for_update(driver, data_url, last_content)
-        if updated:
-            print("New update detected!")
-            # Trigger your desktop notification here
-        else:
-            print("No change detected.")
-        time.sleep(300)  # Check every 5 minutes
+    # Auto-refresh
+    time.sleep(interval)
+    st.experimental_rerun()
