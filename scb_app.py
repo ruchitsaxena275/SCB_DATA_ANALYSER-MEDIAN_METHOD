@@ -51,6 +51,10 @@ def login_and_get_page():
         print("Login failed:", e)
         return None
 
+    except Exception as e:
+        print("Login failed:", e)
+        return None
+
     print("Login failed:", e)
     return None
 
@@ -87,6 +91,7 @@ if run_monitor:
 
         time.sleep(check_interval)
         st.experimental_rerun()
+
 
 
 
